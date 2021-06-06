@@ -176,18 +176,18 @@ void *samochod(void * id)
     while(1)
     {
         miasto();
+        pthread_mutex_lock(&most_lock);
         if(c=='A')
         {   
-            pthread_mutex_lock(&most_lock);
-
-		m_A++;
-            while(m_A>0)
+		
+		city_A--;
+		
+            while(city_A<0)
             	pthread_cond_wait(&A_miasto, &most_lock);
 
+            m_A++;
             
-            city_A--;
             
-
             if(d==1)
             {
                 umiesc_w_liscie(&kolejka_A,numer);
@@ -196,16 +196,14 @@ void *samochod(void * id)
 komunikat();
 	
 		
-            pthread_mutex_unlock(&most_lock);
             
-            pthread_mutex_lock(&most_lock);
-            
-            while(m_A<0)
-            	pthread_cond_wait(&A_miasto, &most_lock);
+            m_A--;	
+            /*while(m_A<0)
+            	pthread_cond_wait(&A_miasto, &most_lock);*/
             
 
             
-            m_A--;
+            
             nr_sam_most=numer;
 
             if(d==1)
@@ -214,14 +212,12 @@ komunikat();
             }
 komunikat();
 
-            pthread_mutex_unlock(&strona_A_most);
 
             czas_most();
-            pthread_mutex_lock(&most_lock);
+            
             
             
             while(city_B<=0)
-            	pthread_cond_wait(&strona_B_most, &most_lock);
             	pthread_cond_wait(&B_miasto, &most_lock);
 
             
@@ -235,23 +231,22 @@ komunikat();
             }
 komunikat();
 
-		if(city_A == 0 || m_B > 0)
-			pthread_cond_signal(&B_miasto);
-		else
-			pthread_cond_signal(&A_miasto);
-
+	pthread_mutex_unlock(&most_lock);
+        
         }
-        pthread_mutex_unlock(&most_lock);
+        
         else if(c=='B')
         {
-            pthread_mutex_lock(&most_lock);
-
-		m_B++;
-            while(m_B>0)
+        	
+        	city_B--;
+		
+            while(city_B>=0)
             	pthread_cond_wait(&B_miasto, &most_lock);
-
+            	
+            	
+		m_B++;
             
-            city_B--;
+            
             
 
             if(d==1)
@@ -262,9 +257,7 @@ komunikat();
 komunikat();
 	
 		
-            pthread_mutex_unlock(&most_lock);
             
-            pthread_mutex_lock(&most_lock);
             
             while(m_B<0)
             	pthread_cond_wait(&B_miasto, &most_lock);
@@ -280,14 +273,12 @@ komunikat();
             }
 komunikat();
 
-            pthread_mutex_unlock(&strona_B_most);
 
             czas_most();
             pthread_mutex_lock(&most_lock);
             
             
             while(city_A<=0)
-            	pthread_cond_wait(&strona_A_most, &most_lock);
             	pthread_cond_wait(&A_miasto, &most_lock);
 
             
@@ -301,12 +292,7 @@ komunikat();
             }
 komunikat();
 
-		if(city_B == 0 || m_A > 0)
-			pthread_cond_signal(&A_miasto);
-		else
-			pthread_cond_signal(&B_miasto);
 		pthread_mutex_unlock(&most_lock);
-
         }
     }
 }
@@ -333,9 +319,7 @@ int main(int argc,char*argv[])
     }
     
     
-    pthread_mutex_init(&mutex_most, NULL);
-    pthread_cond_init(&strona_A_most, NULL);
-    pthread_cond_init(&strona_B_most, NULL);
+    pthread_mutex_init(&most_lock, NULL);
     pthread_cond_init(&A_miasto, NULL);
     pthread_cond_init(&B_miasto, NULL);
 
@@ -369,9 +353,7 @@ komunikat();
         pthread_join(samochod_watki[i],NULL);
     }
 
-    pthread_mutex_destroy(&mutex_most);
-    pthread_cond_destroy(&strona_A_most);
-    pthread_cond_destroy(&strona_B_most);
+    pthread_mutex_destroy(&most_lock);
     pthread_cond_destroy(&A_miasto);
     pthread_cond_destroy(&B_miasto);
 
