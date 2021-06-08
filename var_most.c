@@ -21,13 +21,14 @@ list *kolejka_B = NULL;
 list *miasto_A = NULL;
 list *miasto_B = NULL;
 
+list *lista_most = NULL;
 
 
-//pthread_cond_t strona_A_most; 	//samochody oczekujace po stronie miasta A
-//pthread_cond_t strona_B_most;		//--||-- B
-pthread_cond_t A_miasto;		//samochody w miescie A
-pthread_cond_t B_miasto;		//--||-- B
+pthread_cond_t przed_mostem;	//samochod jest przed mostem
+pthread_cond_t za_mostem;		//samochod jest za mostem
 
+pthread_mutex_t mutex_A; //mutex kolejki_A i miasta_A
+pthread_mutex_t mutex_B; //mutex kolejki_B i miasta_B
 pthread_mutex_t most_lock;		//stan mostu
 
 
@@ -147,17 +148,80 @@ void usun_lista(list **l)
 
     *l=NULL;
 }
-void czas_most()// czekaj od 1s do 4s
+void czas_most()// czekaj od 0,5s do 1,5s
 {
-    int a = (rand()%4) * 1000000 + 1000000;
+
+    int a = (rand()%11) * 100000 + 500000;
 
     usleep(a);
 }
 
-void miasto()// czekaj od 0,5s do 3,5s
+int podaj_pierwszy(list *l)
+{if(l==NULL)
+{return 0;
+
+}
+else return l->nr_samochod;
+
+}
+
+void miasto()// czekaj od 2s do 5s
 {
-    int a = (rand()%31) * 100000 + 500000;
+    int a = (rand()%4) * 1000000 + 2000000;
     usleep(a);
+}
+
+void *most()
+{ int numer=0;
+    while(1)
+{pthread_mutex_lock(&most_lock);
+            //oczekiwanie na samochod przed mostem
+ pthread_cond_wait(&przed_mostem, &most_lock);
+numer=podaj_pierwszy(lista_most);
+
+if(numer>0)
+{pthread_mutex_lock(&mutex_A);
+pthread_mutex_lock(&mutex_B);
+usun_z_listy(&lista_most,numer);
+            m_A--;
+            nr_sam_most=numer;
+
+            if(d==1)
+            {
+                usun_z_listy(&kolejka_A,numer);
+
+            }
+            komunikat();
+
+            czas_most();
+ pthread_mutex_unlock(&mutex_A);
+ pthread_mutex_unlock(&mutex_B);
+ pthread_cond_signal(&za_mostem);
+
+}
+else if(numer<0)
+{pthread_mutex_lock(&mutex_A);
+pthread_mutex_lock(&mutex_B);
+usun_z_listy(&lista_most,numer);
+            m_B--;
+            nr_sam_most=numer;
+
+            if(d==1)
+            {
+                usun_z_listy(&kolejka_B,numer);
+
+            }
+            komunikat();
+
+            czas_most();
+pthread_mutex_unlock(&mutex_A);
+ pthread_mutex_unlock(&mutex_B);
+ pthread_cond_signal(&za_mostem);
+
+}
+
+  pthread_mutex_unlock(&most_lock);
+}
 }
 void *samochod(void * id)
 {
@@ -176,123 +240,79 @@ void *samochod(void * id)
     while(1)
     {
         miasto();
-        pthread_mutex_lock(&most_lock);
-        if(c=='A')
-        {   
-		
-		city_A--;
-		
-            while(city_A<0)
-            	pthread_cond_wait(&A_miasto, &most_lock);
 
+        if(c=='A')
+        {//przejscie z miasta A do kolejki A
+            pthread_mutex_lock(&mutex_A);
+            pthread_mutex_lock(&mutex_B);
+
+            city_A--;
             m_A++;
-            
-            
+
+
             if(d==1)
-            {
-                umiesc_w_liscie(&kolejka_A,numer);
+            {umiesc_w_liscie(&kolejka_A,numer);
             usun_z_listy(&miasto_A,numer);
             }
-komunikat();
-	
-		
-            
-            m_A--;	
-            /*while(m_A<0)
-            	pthread_cond_wait(&A_miasto, &most_lock);*/
-            
+            komunikat();
+            umiesc_w_liscie(&lista_most,numer);
+            pthread_mutex_unlock(&mutex_A);
+            pthread_mutex_unlock(&mutex_B);
+            //wyslanie sygnalu do mostu
 
-            
-            
-            nr_sam_most=numer;
+            pthread_cond_signal(&przed_mostem);
 
-            if(d==1)
-            {
-                usun_z_listy(&kolejka_A,numer);
-            }
-komunikat();
-
-
-            czas_most();
-            
-            
-            
-            while(city_B<=0)
-            	pthread_cond_wait(&B_miasto, &most_lock);
-
-            
-            city_B++;
-            nr_sam_most=0;
-
-             c='B';
+            pthread_mutex_lock(&mutex_B);
+            //oczekiwanie na zejscie z mostu
+            pthread_cond_wait(&za_mostem, &mutex_B);
+            //samochod jest w miescie B
+           city_B++;
             if(d==1)
             {
                 umiesc_w_liscie(&miasto_B,numer);
-            }
-komunikat();
 
-	pthread_mutex_unlock(&most_lock);
-        
+            }
+            komunikat();
+            c='B';
+            pthread_mutex_unlock(&mutex_B);
+
         }
-        
+
         else if(c=='B')
-        {
-        	
-        	city_B--;
-		
-            while(city_B>=0)
-            	pthread_cond_wait(&B_miasto, &most_lock);
-            	
-            	
-		m_B++;
-            
-            
-            
+        {//przejscie z miasta B do kolejki B
+             pthread_mutex_lock(&mutex_A);
+            pthread_mutex_lock(&mutex_B);
+
+            city_B--;
+            m_B++;
+
 
             if(d==1)
-            {
-                umiesc_w_liscie(&kolejka_B,numer);
+            {umiesc_w_liscie(&kolejka_B,numer);
             usun_z_listy(&miasto_B,numer);
             }
-komunikat();
-	
-		
-            
-            
-            while(m_B<0)
-            	pthread_cond_wait(&B_miasto, &most_lock);
-            
+            komunikat();
+            umiesc_w_liscie(&lista_most,-numer);
+            pthread_mutex_unlock(&mutex_A);
+            pthread_mutex_unlock(&mutex_B);
+            //wyslanie sygnalu do mostu
 
-            
-            m_B--;
-            nr_sam_most=numer;
+            pthread_cond_signal(&przed_mostem);
 
-            if(d==1)
-            {
-                usun_z_listy(&kolejka_B,numer);
-            }
-komunikat();
-
-
-            czas_most();
-            pthread_mutex_lock(&most_lock);
-            
-            
-            while(city_A<=0)
-            	pthread_cond_wait(&A_miasto, &most_lock);
-
-            
-            city_A++;
-            nr_sam_most=0;
-
-             c='A';
+            pthread_mutex_lock(&mutex_A);
+            //oczekiwanie na zejscie z mostu
+            pthread_cond_wait(&za_mostem, &mutex_A);
+            //samochod jest w miescie B
+           city_A++;
             if(d==1)
             {
                 umiesc_w_liscie(&miasto_A,numer);
-            }
-komunikat();
 
-		pthread_mutex_unlock(&most_lock);
+            }
+            komunikat();
+            c='A';
+            pthread_mutex_unlock(&mutex_A);
+
         }
     }
 }
@@ -317,13 +337,17 @@ int main(int argc,char*argv[])
 
         }
     }
-    
-    
+
+
     pthread_mutex_init(&most_lock, NULL);
-    pthread_cond_init(&A_miasto, NULL);
-    pthread_cond_init(&B_miasto, NULL);
+    pthread_mutex_init(&mutex_A, NULL);
+    pthread_mutex_init(&mutex_B, NULL);
+    pthread_cond_init(&przed_mostem, NULL);
+    pthread_cond_init(&za_mostem, NULL);
 
     pthread_t *samochod_watki = malloc(sizeof(pthread_t)*l_samochodow);
+    pthread_t most_watek;
+    pthread_create(&most_watek, NULL, most, NULL);
     int i=0;
 city_A=l_samochodow/2+(l_samochodow%2);
 city_B=l_samochodow/2;
@@ -353,15 +377,19 @@ komunikat();
         pthread_join(samochod_watki[i],NULL);
     }
 
+    pthread_join(most_watek,NULL);
     pthread_mutex_destroy(&most_lock);
-    pthread_cond_destroy(&A_miasto);
-    pthread_cond_destroy(&B_miasto);
+    pthread_mutex_destroy(&mutex_A);
+    pthread_mutex_destroy(&mutex_B);
+    pthread_cond_destroy(&przed_mostem);
+    pthread_cond_destroy(&za_mostem);
+
+
 
      usun_lista(&kolejka_A);
     usun_lista(&kolejka_B);
       usun_lista(&miasto_A);
     usun_lista(&miasto_B);
-
+usun_lista(&lista_most);
     return 0;
 }
-
