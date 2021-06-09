@@ -11,21 +11,22 @@ typedef struct List
     int nr_samochod;
     struct List *next;
 } list;
-int d=0;
+
+int d=0;//debug
 int nr_sam_most=0;//nr samochodu na moscie
-int l_samochodow =10;
-int city_A=0,city_B=0,m_A=0,m_B=0;
-list *kolejka_A=NULL ;
-list *kolejka_B = NULL;
+int l_samochodow = 10;// liczba krazacych samochodow
+int city_A=0,city_B=0,m_A=0,m_B=0; //liczba samochodu w miescie A,miescie B,kolejce A,kolejce B
+list *kolejka_A = NULL; //ktore samochody w kolejce A
+list *kolejka_B = NULL;//ktore samochody w kolejce B
 
-list *miasto_A = NULL;
-list *miasto_B = NULL;
+list *miasto_A = NULL;//ktore samochody w miasto A
+list *miasto_B = NULL;//ktore samochody w miasto B
 
-pthread_mutex_t mutex_most;
-pthread_mutex_t strona_A_most;
-pthread_mutex_t strona_B_most;
-pthread_mutex_t A_miasto;
-pthread_mutex_t B_miasto;
+pthread_mutex_t mutex_most; //mutex mostu(nr_sam_most)
+pthread_mutex_t strona_A_most; //mutex kolejki A (m_A)
+pthread_mutex_t strona_B_most; //mutex kolejki B (m_B)
+pthread_mutex_t A_miasto; //mutex miasto A (city_A)
+pthread_mutex_t B_miasto; //mutex miasto B (city_B)
 
 void wypisz_lista(list *l )
 {
@@ -172,6 +173,7 @@ void *samochod(void * id)
     {
         miasto();
         if(c=='A')
+            //samochod przemieszcza sie z miasta A do kolejki A
         {   pthread_mutex_lock(&A_miasto);
             pthread_mutex_lock(&strona_A_most);
 
@@ -188,7 +190,7 @@ void *samochod(void * id)
             komunikat();
             pthread_mutex_unlock(&strona_A_most);
             pthread_mutex_unlock(&A_miasto);
-
+//samochod przemieszcza sie z kolejki A na most
             pthread_mutex_lock(&mutex_most);
             pthread_mutex_lock(&strona_A_most);
 
@@ -205,6 +207,7 @@ void *samochod(void * id)
             pthread_mutex_unlock(&strona_A_most);
 
             czas_most();
+            //samochod przemieszcza sie z  mostu do miasta B
             pthread_mutex_lock(&B_miasto);
             city_B++;
             nr_sam_most=0;
@@ -221,7 +224,7 @@ void *samochod(void * id)
 
         }
         else if(c=='B')
-        {
+        {//samochod przemieszcza sie z miasta B do kolejki B
             pthread_mutex_lock(&B_miasto);
             pthread_mutex_lock(&strona_B_most);
 
@@ -237,7 +240,7 @@ void *samochod(void * id)
             komunikat();
             pthread_mutex_unlock(&strona_B_most);
             pthread_mutex_unlock(&B_miasto);
-
+//samochod przemieszcza sie z kolejki B na most
             pthread_mutex_lock(&mutex_most);
             pthread_mutex_lock(&strona_B_most);
 
@@ -254,6 +257,7 @@ komunikat();
             pthread_mutex_unlock(&strona_B_most);
 
             czas_most();
+             //samochod przemieszcza sie z  mostu do miasta A
             pthread_mutex_lock(&A_miasto);
             city_A++;
             nr_sam_most=0;

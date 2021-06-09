@@ -11,25 +11,25 @@ typedef struct List
     int nr_samochod;
     struct List *next;
 } list;
-int d=0;
+int d=0;//debug
 int nr_sam_most=0;//nr samochodu na moscie
-int l_samochodow = 10;
-int city_A=0,city_B=0,m_A=0,m_B=0;
-list *kolejka_A = NULL;
-list *kolejka_B = NULL;
+int l_samochodow = 10;// liczba krazacych samochodow
+int city_A=0,city_B=0,m_A=0,m_B=0; //liczba samochodu w miescie A,miescie B,kolejce A,kolejce B
+list *kolejka_A = NULL; //ktore samochody w kolejce A
+list *kolejka_B = NULL;//ktore samochody w kolejce B
 
-list *miasto_A = NULL;
-list *miasto_B = NULL;
+list *miasto_A = NULL;//ktore samochody w miasto A
+list *miasto_B = NULL;//ktore samochody w miasto B
 
-list *lista_most = NULL;
+list *lista_most = NULL; //samochody czekajace przy moscie ze strony A i strony B
 
 
 pthread_cond_t przed_mostem;	//samochod jest przed mostem
 pthread_cond_t za_mostem;		//samochod jest za mostem
 
-pthread_mutex_t mutex_A; //mutex kolejki_A i miasta_A
-pthread_mutex_t mutex_B; //mutex kolejki_B i miasta_B
-pthread_mutex_t most_lock;		//stan mostu
+pthread_mutex_t mutex_A; //mutex kolejki_A i miasta_A (city_A,m_A)
+pthread_mutex_t mutex_B; //mutex kolejki_B i miasta_B (city_B,m_B)
+pthread_mutex_t most_lock;		//mutex mostu
 
 
 
